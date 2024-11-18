@@ -7,10 +7,19 @@ import Spinner from "@/components/spinner";
 interface Props {
   socket: Socket | null;
 }
+// const servers: RTCConfiguration = {
+//   iceServers: [
+//     {
+//       urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
+//     },
+//   ],
+// };
 const servers: RTCConfiguration = {
   iceServers: [
     {
-      urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
+      urls: "turn:turn.anonymous10.cloud:3478",
+      username: "user",
+      credential: "pass",
     },
   ],
 };
