@@ -6,9 +6,9 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-white px-4 pt-16 pb-8">
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-900 to-black text-white px-4 pt-24 pb-8">
       {/* Main Container */}
-      <div className="relative  flex flex-col items-center space-y-8 pb-6   bg-opacity-90 max-w-5xl w-full shadow-2xl rounded-3xl bg-gradient-to-br from-gray-800 to-black backdrop-blur-md">
+      <div className="relative  flex flex-col items-center space-y-8 pb-6    bg-opacity-90 max-w-5xl w-full shadow-2xl rounded-3xl bg-gradient-to-br from-gray-800 to-black backdrop-blur-md">
         {/* Image Section */}
         <div className="relative w-full rounded-t-lg rounded-b-md h-72 overflow-hidden shadow-lg  ">
           <Image
@@ -27,10 +27,16 @@ export default function HomePage() {
         </h2>
 
         {/* Description */}
-        <p className="text-center text-lg leading-relaxed text-gray-300 px-4">
-          Discover new friends and experiences without an app! NamasteVibe pairs
-          you randomly for one-on-one conversations that keep things fresh, fun,
-          and anonymous.
+        <p className="text-center text-lg leading-relaxed text-gray-300 px-6 md:px-10 max-w-2xl mx-auto">
+          <span className="font-semibold text-white">
+            Discover connections, no app required!
+          </span>
+          <br className="hidden sm:block" />
+          <span className="text-gray-400">
+            Dive into random, one-on-one conversations that are always{" "}
+            <em>fresh</em>, <em>fun</em>, and completely <em>anonymous</em>.
+            Experience the thrill of meeting new friends, effortlessly.
+          </span>
         </p>
 
         {/* Links to Terms */}

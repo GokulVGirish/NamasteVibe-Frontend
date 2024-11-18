@@ -1,20 +1,20 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { FaArrowRight, FaPaperPlane, FaSpinner } from "react-icons/fa";
+import { FaArrowRight, FaPaperPlane } from "react-icons/fa";
 import WithSocket from "@/socket/socket";
 import { Socket } from "socket.io-client";
 import Spinner from "@/components/spinner";
 interface Props {
   socket: Socket | null;
 }
-
-const servers: any = {
+const servers: RTCConfiguration = {
   iceServers: [
     {
       urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
     },
   ],
 };
+
 
 const VideoChat = ({ socket }: Props) => {
   const [messages, setMessages] = useState<
@@ -25,14 +25,12 @@ const VideoChat = ({ socket }: Props) => {
   const userId = useRef<string | null>(null);
   const [receiverId, setReceiverId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [matchFound, setMatchFound] = useState(false);
+ 
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const muteVideoRef = useRef<HTMLButtonElement>(null);
-  const muteAudioRef = useRef<HTMLButtonElement>(null);
   console.log("myuserif", userId, "receiverUserId", receiverId);
 
   useEffect(() => {
@@ -49,7 +47,7 @@ const VideoChat = ({ socket }: Props) => {
       console.log("came");
       setReceiverId(userId);
       setLoading(false);
-      setMatchFound(true);
+
       startRtcConnection(userId, isMaster);
     });
     socket?.on("handle-next", () => {
@@ -59,16 +57,16 @@ const VideoChat = ({ socket }: Props) => {
       console.log("offer vannu");
 
       const offer = new RTCSessionDescription(e.offer);
-      peerConnection.current?.setRemoteDescription(offer);
+      await peerConnection.current?.setRemoteDescription(offer);
       const answer = await peerConnection.current?.createAnswer();
-      peerConnection.current?.setLocalDescription(answer);
+      await peerConnection.current?.setLocalDescription(answer);
       console.log("e from ", e.from);
       socket.emit("answer", { from: userId.current, to: e.from, answer });
     });
-    socket?.on("answer", (e) => {
+    socket?.on("answer", async(e) => {
       console.log("answer vannu");
       const answer = new RTCSessionDescription(e.answer);
-      peerConnection.current?.setRemoteDescription(answer);
+      await peerConnection.current?.setRemoteDescription(answer);
     });
     socket?.on("candidate", async ({ candidate }) => {
       await peerConnection.current?.addIceCandidate(
@@ -90,7 +88,7 @@ const VideoChat = ({ socket }: Props) => {
 
   const startSearch = () => {
     setLoading(true);
-    setMatchFound(false);
+
     setReceiverId(null);
     socket?.emit("find_match");
   };
@@ -98,7 +96,7 @@ const VideoChat = ({ socket }: Props) => {
   const handleNext = () => {
     socket?.emit("find_match", { receiverId });
     setLoading(true);
-    setMatchFound(false);
+
     setReceiverId(null);
   };
 
@@ -123,11 +121,12 @@ const VideoChat = ({ socket }: Props) => {
         localVideoRef.current.muted = true;
       }
       peerConnection.current = new RTCPeerConnection(servers);
-      localStreamRef.current
-        .getTracks()
-        .forEach((track) =>
-          peerConnection.current?.addTrack(track, localStreamRef.current!!)
-        );
+    
+        if (localStreamRef.current && peerConnection.current) {
+          localStreamRef.current.getTracks().forEach((track) => {
+            peerConnection.current?.addTrack(track, localStreamRef.current!);
+          });
+        }
       peerConnection.current.ontrack = (e) => {
         if (remoteVideoRef.current) {
           console.log("tracking");
@@ -155,12 +154,12 @@ const VideoChat = ({ socket }: Props) => {
       };
       if (isMaster) {
         const offer = await peerConnection.current.createOffer();
-        peerConnection.current.setLocalDescription(offer);
+        await peerConnection.current.setLocalDescription(offer);
 
         socket?.emit("offer", { from: userId.current, to: toId, offer });
       }
     } catch (error) {
-      console.log("error");
+      console.log(error);
     }
   };
 
