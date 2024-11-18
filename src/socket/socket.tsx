@@ -15,9 +15,7 @@ const WithSocket = <P extends object>(Component: React.ComponentType<P & { socke
         secure: true,
       });
       setSocket(socketInstance);
-      return () => {
-        socketInstance.disconnect();
-      };
+    
     }, []);
 
     return <Component {...props} socket={socket} />;

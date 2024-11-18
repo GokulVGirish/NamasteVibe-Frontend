@@ -15,7 +15,6 @@ const servers: RTCConfiguration = {
   ],
 };
 
-
 const VideoChat = ({ socket }: Props) => {
   const [messages, setMessages] = useState<
     { role: "me" | "received"; message: string }[]
@@ -25,12 +24,11 @@ const VideoChat = ({ socket }: Props) => {
   const userId = useRef<string | null>(null);
   const [receiverId, setReceiverId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
- 
-
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [isTyping,setIsTyping]=useState(false)
   console.log("myuserif", userId, "receiverUserId", receiverId);
 
   useEffect(() => {
@@ -42,7 +40,6 @@ const VideoChat = ({ socket }: Props) => {
     // Start searching for a match on load
     startSearch();
 
-    // Event listener for match
     socket?.on("match_found", ({ userId, isMaster }) => {
       console.log("came");
       setReceiverId(userId);
@@ -63,7 +60,7 @@ const VideoChat = ({ socket }: Props) => {
       console.log("e from ", e.from);
       socket.emit("answer", { from: userId.current, to: e.from, answer });
     });
-    socket?.on("answer", async(e) => {
+    socket?.on("answer", async (e) => {
       console.log("answer vannu");
       const answer = new RTCSessionDescription(e.answer);
       await peerConnection.current?.setRemoteDescription(answer);
@@ -73,12 +70,31 @@ const VideoChat = ({ socket }: Props) => {
         new RTCIceCandidate(candidate)
       );
     });
+    socket?.on("message",(message)=>{
+      console.log("message",message)
+      setMessages((prev) => [...prev, { role: "received", message: message }]);
+
+    })
+      let timeout:NodeJS.Timeout;
+      socket?.on("typing", () => {
+        setIsTyping(true);
+        if(timeout)clearTimeout(timeout)
+        
+      
+        timeout=setTimeout(() => setIsTyping(false), 3000);
+      });
 
     // Clean up socket events on component unmount
     return () => {
       socket?.off("user_id");
       peerConnection.current?.close();
       socket?.off("match_found");
+      socket?.off("handle-next")
+      socket?.off("offer")
+      socket?.off("answer")
+      socket?.off("candidate")
+      socket?.disconnect()
+
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
@@ -94,15 +110,16 @@ const VideoChat = ({ socket }: Props) => {
   };
 
   const handleNext = () => {
+    setMessages([])
+    setNewMessage("")
     socket?.emit("find_match", { receiverId });
     setLoading(true);
-
     setReceiverId(null);
   };
 
   const sendMessage = () => {
     if (socket && newMessage) {
-      socket.emit("message", newMessage);
+      socket.emit("message", {message:newMessage,to:receiverId});
       setMessages((prev) => [...prev, { role: "me", message: newMessage }]);
       setNewMessage("");
     }
@@ -113,20 +130,36 @@ const VideoChat = ({ socket }: Props) => {
       console.log("heyy bro");
 
       localStreamRef.current = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, max: 60 },
+        },
         audio: true,
       });
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = localStreamRef.current;
         localVideoRef.current.muted = true;
       }
       peerConnection.current = new RTCPeerConnection(servers);
-    
-        if (localStreamRef.current && peerConnection.current) {
-          localStreamRef.current.getTracks().forEach((track) => {
-            peerConnection.current?.addTrack(track, localStreamRef.current!);
-          });
+
+      if (localStreamRef.current && peerConnection.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.current?.addTrack(track, localStreamRef.current!);
+        });
+        const sender = peerConnection.current
+          .getSenders()
+          .find((s) => s.track!.kind === "video");
+        if (sender) {
+          const params = sender.getParameters();
+          if (!params.encodings) params.encodings = [{}];
+          params.encodings[0].maxBitrate = 2500000;
+          sender
+            .setParameters(params)
+            .catch((err) => console.error("Failed to set parameters:", err));
         }
+      }
       peerConnection.current.ontrack = (e) => {
         if (remoteVideoRef.current) {
           console.log("tracking");
@@ -162,6 +195,10 @@ const VideoChat = ({ socket }: Props) => {
       console.log(error);
     }
   };
+const handleTyping = (e:React.ChangeEvent<HTMLInputElement>) => {
+  setNewMessage(e.target.value);
+  socket?.emit("typing",receiverId);
+};
 
   return (
     <div className="flex flex-col md:flex-row pt-28 min-h-screen p-2 bg-gradient-to-b from-gray-900 to-black">
@@ -224,6 +261,13 @@ const VideoChat = ({ socket }: Props) => {
                 </div>
               );
             })}
+
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="self-end bg-gray-600 p-2 rounded-lg text-gray-300 max-w-xs animate-pulse">
+                Typing...
+              </div>
+            )}
           </div>
         </div>
 
@@ -232,7 +276,7 @@ const VideoChat = ({ socket }: Props) => {
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleTyping}
             placeholder="Type your message..."
             className="flex-1 border border-gray-600 rounded-lg p-2 bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
           />
