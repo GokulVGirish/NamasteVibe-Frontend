@@ -17,9 +17,9 @@ interface Props {
 const servers: RTCConfiguration = {
   iceServers: [
     {
-      urls: "turn:turn.anonymous10.cloud:3478",
-      username: "user",
-      credential: "pass",
+      urls: "turn:13.200.127.26:3478",
+      username: "gokul",
+      credential: "gokul365$",
     },
   ],
 };
