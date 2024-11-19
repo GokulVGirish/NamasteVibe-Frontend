@@ -14,15 +14,28 @@ interface Props {
 //     },
 //   ],
 // };
+// const servers: RTCConfiguration = {
+//   iceServers: [
+//     {
+//       urls: "turn:13.200.127.26:3478",
+//       username: "gokul",
+//       credential: "gokul365$",
+//     },
+//   ],
+// };
 const servers: RTCConfiguration = {
   iceServers: [
     {
-      urls: "turn:13.200.127.26:3478",
-      username: "gokul",
-      credential: "gokul365$",
+      urls: ["turn:13.200.127.26:3478"], // TURN server URL
+      username: "gokul", // TURN server username
+      credential: "gokul365$", // TURN server password
+    },
+    {
+      urls: ["stun:13.200.127.26:3478"], // STUN server URL
     },
   ],
 };
+
 
 const VideoChat = ({ socket }: Props) => {
   const [messages, setMessages] = useState<
