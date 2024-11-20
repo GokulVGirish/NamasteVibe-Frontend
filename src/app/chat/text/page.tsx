@@ -18,7 +18,8 @@ const TextChat = ({ socket }: Props) => {
     { role: "me" | "received"; message: string }[]
   >([]);
   const [isTyping, setIsTyping] = useState(false);
-  let timeout: NodeJS.Timeout;
+  let timeout=useRef<NodeJS.Timeout | null>(null);
+  
 
   useEffect(() => {
 
@@ -45,9 +46,9 @@ const TextChat = ({ socket }: Props) => {
     socket?.on("typing", () => {
       console.log("typing is happening");
       setIsTyping(true);
-      if (timeout) clearTimeout(timeout);
+      if (timeout.current) clearTimeout(timeout.current);
 
-      timeout = setTimeout(() => setIsTyping(false), 1000);
+      timeout.current = setTimeout(() => setIsTyping(false), 1000);
     });
 
     socket?.on("handle-next", () => {
@@ -60,7 +61,7 @@ const TextChat = ({ socket }: Props) => {
       socket?.off("message");
       socket?.off("handle-next");
       socket?.emit("assist-partner", receiverId.current);
-      if (timeout) clearTimeout(timeout);
+      if (timeout.current) clearTimeout(timeout.current);
     };
   }, [socket]);
 
