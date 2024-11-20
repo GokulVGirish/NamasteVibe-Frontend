@@ -103,11 +103,7 @@ const VideoChat = ({ socket }: Props) => {
       console.log("answer listener error", error);
     }
   };
-  const handleCandidate = async ({
-    candidate,
-  }: {
-    candidate: RTCIceCandidateInit;
-  }) => {
+  const handleCandidate = async (candidate: RTCIceCandidateInit) => {
     try {
       await peerConnection.current?.addIceCandidate(
         new RTCIceCandidate(candidate)
@@ -197,7 +193,7 @@ const VideoChat = ({ socket }: Props) => {
   const sendMessage = () => {
     if (!newMessage) return toast.error("Enter a Message");
     if (socket && newMessage) {
-      socket.emit("message", { message: newMessage, to: receiverId });
+      socket.emit("message", { message: newMessage, to: receiverId.current });
       setMessages((prev) => [...prev, { role: "me", message: newMessage }]);
       setNewMessage("");
     }
@@ -248,7 +244,9 @@ const VideoChat = ({ socket }: Props) => {
       peerConnection.current.onicecandidate = (e) => {
         if (e.candidate) {
           socket?.emit("candidate", {
-            candidate: e.candidate,
+            candidate: e.candidate.candidate,
+            sdpMid: e.candidate.sdpMid,
+            sdpMLineIndex: e.candidate.sdpMLineIndex,
             from: userId.current,
             to: toId,
           });
