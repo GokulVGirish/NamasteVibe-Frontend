@@ -248,7 +248,7 @@ const VideoChat = ({ socket }: Props) => {
       peerConnection.current.onicecandidate = (e) => {
         if (e.candidate) {
           socket?.emit("candidate", {
-            candidate: e.candidate.candidate,
+            candidate: e.candidate,
             from: userId.current,
             to: toId,
           });
