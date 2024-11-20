@@ -8,13 +8,13 @@ import { toast, Toaster } from "sonner";
 interface Props {
   socket: Socket | null;
 }
-const servers: RTCConfiguration = {
-  iceServers: [
-    {
-      urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
-    },
-  ],
-};
+// const servers: RTCConfiguration = {
+//   iceServers: [
+//     {
+//       urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
+//     },
+//   ],
+// };
 // const servers: RTCConfiguration = {
 //   iceServers: [
 //     {
@@ -24,18 +24,18 @@ const servers: RTCConfiguration = {
 //     },
 //   ],
 // };
-// const servers: RTCConfiguration = {
-//   iceServers: [
-//     {
-//       urls: ["turn:13.200.127.26:3478"], // TURN server URL
-//       username: "gokul", // TURN server username
-//       credential: "gokul365$", // TURN server password
-//     },
-//     {
-//       urls: ["stun:13.200.127.26:3478"], // STUN server URL
-//     },
-//   ],
-// };
+const servers: RTCConfiguration = {
+  iceServers: [
+    {
+      urls: ["turn:13.200.127.26:3478"], // TURN server URL
+      username: "gokul", // TURN server username
+      credential: "gokul365$", // TURN server password
+    },
+    {
+      urls: ["stun:13.200.127.26:3478"], // STUN server URL
+    },
+  ],
+};
 
 const VideoChat = ({ socket }: Props) => {
   const [messages, setMessages] = useState<
