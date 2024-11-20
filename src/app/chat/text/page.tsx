@@ -1,6 +1,6 @@
 "use client";
 import WithSocket from "@/socket/socket";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { Socket } from "socket.io-client";
 import Spinner from "@/components/spinner";
@@ -18,9 +18,19 @@ const TextChat = ({ socket }: Props) => {
     { role: "me" | "received"; message: string }[]
   >([]);
   const [isTyping, setIsTyping] = useState(false);
-  let timeout=useRef<NodeJS.Timeout | null>(null);
+  const timeout=useRef<NodeJS.Timeout | null>(null);
   
-
+  const startSearch =useCallback( () => {
+    if (receiverId.current) receiverId.current = null;
+    socket?.emit("find_match");
+  },[socket])
+  const handleNext =useCallback( () => {
+    setMessages([]);
+    setNewMessage("");
+    socket?.emit("find_match", { receiverId: receiverId.current });
+    setIsLoading(true);
+    if (receiverId.current) receiverId.current = null;
+  },[socket])
   useEffect(() => {
 
 
@@ -63,7 +73,7 @@ const TextChat = ({ socket }: Props) => {
       socket?.emit("assist-partner", receiverId.current);
       if (timeout.current) clearTimeout(timeout.current);
     };
-  }, [socket]);
+  }, [socket,startSearch,handleNext]);
 
   const sendMessage = () => {
     if(!newMessage) return toast.error("Enter a Message")
@@ -74,17 +84,7 @@ const TextChat = ({ socket }: Props) => {
     ]);
     setNewMessage("");
   };
-  const startSearch = () => {
-    if (receiverId.current) receiverId.current = null;
-    socket?.emit("find_match");
-  };
-  const handleNext = () => {
-    setMessages([]);
-    setNewMessage("");
-    socket?.emit("find_match", { receiverId: receiverId.current });
-    setIsLoading(true);
-    if (receiverId.current) receiverId.current = null;
-  };
+
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     socket?.emit("typing", receiverId.current);

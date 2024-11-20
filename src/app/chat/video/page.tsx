@@ -55,43 +55,8 @@ const VideoChat = ({ socket }: Props) => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   console.log("myuserif", userId, "receiverUserId", receiverId);
 
-  useEffect(() => {
-    // Start searching for a match on load
 
-    socket?.on("user_id", setUserId);
-    socket?.on("match_found", handleMatchFound);
-    socket?.on("handle-next", handleNextUser);
-    socket?.on("offer", handleOffer);
-    socket?.on("answer", handleAnswer);
-    socket?.on("candidate", handleCandidate);
-    socket?.on("message", handleMessages);
-    socket?.on("typing", handleTypingEvent);
 
-    // Clean up socket events on component unmount
-    return () => {
-      peerConnection.current?.close();
-      socket?.off("user_id", setUserId);
-      socket?.off("match_found", handleMatchFound);
-      socket?.off("handle-next", handleNextUser);
-      socket?.off("offer", handleOffer);
-      socket?.off("answer", handleAnswer);
-      socket?.off("candidate", handleCandidate);
-      socket?.off("message", handleMessages);
-      socket?.off("typing", handleTypingEvent);
-      peerConnection.current?.close();
-      peerConnection.current = null;
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = null;
-      }
-
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-        localStreamRef.current = null;
-      }
-    };
-  }, [socket]);
   const setUserId = (myId: string) => {
     console.log("userId", userId);
     userId.current = myId;
@@ -168,6 +133,42 @@ const VideoChat = ({ socket }: Props) => {
     receiverId.current = null;
     if (socket?.active) socket?.emit("find_match");
   };
+
+  useEffect(() => {
+    // Start searching for a match on load
+
+    socket?.on("user_id", setUserId);
+    socket?.on("match_found", handleMatchFound);
+    socket?.on("handle-next", handleNextUser);
+    socket?.on("offer", handleOffer);
+    socket?.on("answer", handleAnswer);
+    socket?.on("candidate", handleCandidate);
+    socket?.on("message", handleMessages);
+    socket?.on("typing", handleTypingEvent);
+
+    // Clean up socket events on component unmount
+    return () => {
+      peerConnection.current?.close();
+      socket?.off("user_id", setUserId);
+      socket?.off("match_found", handleMatchFound);
+      socket?.off("handle-next", handleNextUser);
+      socket?.off("offer", handleOffer);
+      socket?.off("answer", handleAnswer);
+      socket?.off("candidate", handleCandidate);
+      socket?.off("message", handleMessages);
+      socket?.off("typing", handleTypingEvent);
+      peerConnection.current?.close();
+      peerConnection.current = null;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+      }
+    };
+  }, [socket]);
+  
 
   const handleNext = () => {
     setMessages([]);
