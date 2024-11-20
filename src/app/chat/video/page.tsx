@@ -4,16 +4,17 @@ import { FaArrowRight, FaPaperPlane } from "react-icons/fa";
 import WithSocket from "@/socket/socket";
 import { Socket } from "socket.io-client";
 import Spinner from "@/components/spinner";
+import { toast, Toaster } from "sonner";
 interface Props {
   socket: Socket | null;
 }
-// const servers: RTCConfiguration = {
-//   iceServers: [
-//     {
-//       urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
-//     },
-//   ],
-// };
+const servers: RTCConfiguration = {
+  iceServers: [
+    {
+      urls: ["stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"],
+    },
+  ],
+};
 // const servers: RTCConfiguration = {
 //   iceServers: [
 //     {
@@ -23,19 +24,18 @@ interface Props {
 //     },
 //   ],
 // };
-const servers: RTCConfiguration = {
-  iceServers: [
-    {
-      urls: ["turn:13.200.127.26:3478"], // TURN server URL
-      username: "gokul", // TURN server username
-      credential: "gokul365$", // TURN server password
-    },
-    {
-      urls: ["stun:13.200.127.26:3478"], // STUN server URL
-    },
-  ],
-};
-
+// const servers: RTCConfiguration = {
+//   iceServers: [
+//     {
+//       urls: ["turn:13.200.127.26:3478"], // TURN server URL
+//       username: "gokul", // TURN server username
+//       credential: "gokul365$", // TURN server password
+//     },
+//     {
+//       urls: ["stun:13.200.127.26:3478"], // STUN server URL
+//     },
+//   ],
+// };
 
 const VideoChat = ({ socket }: Props) => {
   const [messages, setMessages] = useState<
@@ -44,78 +44,47 @@ const VideoChat = ({ socket }: Props) => {
   const [newMessage, setNewMessage] = useState("");
 
   const userId = useRef<string | null>(null);
-  const [receiverId, setReceiverId] = useState<string | null>(null);
+  // const [receiverId, setReceiverId] = useState<string | null>(null);
+  const receiverId = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const [isTyping,setIsTyping]=useState(false)
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   console.log("myuserif", userId, "receiverUserId", receiverId);
 
   useEffect(() => {
-    socket?.emit("user_joined");
-    socket?.on("user_id", (myId) => {
-      userId.current = myId;
-    });
-
     // Start searching for a match on load
-    startSearch();
 
-    socket?.on("match_found", ({ userId, isMaster }) => {
-      console.log("came");
-      setReceiverId(userId);
-      setLoading(false);
-
-      startRtcConnection(userId, isMaster);
-    });
-    socket?.on("handle-next", () => {
-      handleNext();
-    });
-    socket?.on("offer", async (e) => {
-      console.log("offer vannu");
-
-      const offer = new RTCSessionDescription(e.offer);
-      await peerConnection.current?.setRemoteDescription(offer);
-      const answer = await peerConnection.current?.createAnswer();
-      await peerConnection.current?.setLocalDescription(answer);
-      console.log("e from ", e.from);
-      socket.emit("answer", { from: userId.current, to: e.from, answer });
-    });
-    socket?.on("answer", async (e) => {
-      console.log("answer vannu");
-      const answer = new RTCSessionDescription(e.answer);
-      await peerConnection.current?.setRemoteDescription(answer);
-    });
-    socket?.on("candidate", async ({ candidate }) => {
-      await peerConnection.current?.addIceCandidate(
-        new RTCIceCandidate(candidate)
-      );
-    });
-    socket?.on("message",(message)=>{
-      console.log("message",message)
-      setMessages((prev) => [...prev, { role: "received", message: message }]);
-
-    })
-      let timeout:NodeJS.Timeout;
-      socket?.on("typing", () => {
-        setIsTyping(true);
-        if(timeout)clearTimeout(timeout)
-        
-      
-        timeout=setTimeout(() => setIsTyping(false), 3000);
-      });
+    socket?.on("user_id", setUserId);
+    socket?.on("match_found", handleMatchFound);
+    socket?.on("handle-next", handleNextUser);
+    socket?.on("offer", handleOffer);
+    socket?.on("answer", handleAnswer);
+    socket?.on("candidate", handleCandidate);
+    socket?.on("message", handleMessages);
+    socket?.on("typing", handleTypingEvent);
 
     // Clean up socket events on component unmount
     return () => {
-      socket?.off("user_id");
       peerConnection.current?.close();
-      socket?.off("match_found");
-      socket?.off("handle-next")
-      socket?.off("offer")
-      socket?.off("answer")
-      socket?.off("candidate")
-      socket?.disconnect()
+      socket?.off("user_id", setUserId);
+      socket?.off("match_found", handleMatchFound);
+      socket?.off("handle-next", handleNextUser);
+      socket?.off("offer", handleOffer);
+      socket?.off("answer", handleAnswer);
+      socket?.off("candidate", handleCandidate);
+      socket?.off("message", handleMessages);
+      socket?.off("typing", handleTypingEvent);
+      peerConnection.current?.close();
+      peerConnection.current = null;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
 
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -123,25 +92,111 @@ const VideoChat = ({ socket }: Props) => {
       }
     };
   }, [socket]);
+  const setUserId = (myId: string) => {
+    console.log("userId", userId);
+    userId.current = myId;
+    startSearch();
+  };
+  const handleMatchFound = ({
+    userId,
+    isMaster,
+  }: {
+    userId: string;
+    isMaster: boolean;
+  }) => {
+    console.log("match found");
+    receiverId.current = userId;
+    setLoading(false);
+    startRtcConnection(userId, isMaster);
+  };
+  const handleNextUser = () => {
+    receiverId.current = null;
+    handleNext();
+  };
+  const handleOffer = async (e: {
+    offer: RTCSessionDescriptionInit;
+    from: string;
+  }) => {
+    console.log("offer vannu");
+
+    try {
+      const offer = new RTCSessionDescription(e.offer);
+      await peerConnection.current?.setRemoteDescription(offer);
+      const answer = await peerConnection.current?.createAnswer();
+      await peerConnection.current?.setLocalDescription(answer);
+      socket?.emit("answer", { from: userId.current, to: e.from, answer });
+    } catch (error) {
+      console.log("offer listener error", error);
+    }
+  };
+  const handleAnswer = async (e: { answer: RTCSessionDescriptionInit }) => {
+    console.log("answer vannu");
+    try {
+      const answer = new RTCSessionDescription(e.answer);
+      await peerConnection.current?.setRemoteDescription(answer);
+    } catch (error) {
+      console.log("answer listener error", error);
+    }
+  };
+  const handleCandidate = async ({
+    candidate,
+  }: {
+    candidate: RTCIceCandidateInit;
+  }) => {
+    try {
+      await peerConnection.current?.addIceCandidate(
+        new RTCIceCandidate(candidate)
+      );
+    } catch (error) {
+      console.log("candidate listener error", error);
+    }
+  };
+  const handleMessages = (message: string) => {
+    console.log("message", message);
+    setMessages((prev) => [...prev, { role: "received", message: message }]);
+  };
+  const handleTypingEvent = () => {
+    setIsTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
+  };
 
   const startSearch = () => {
     setLoading(true);
 
-    setReceiverId(null);
-    socket?.emit("find_match");
+    receiverId.current = null;
+    if (socket?.active) socket?.emit("find_match");
   };
 
   const handleNext = () => {
-    setMessages([])
-    setNewMessage("")
-    socket?.emit("find_match", { receiverId });
+    setMessages([]);
+    setNewMessage("");
+
     setLoading(true);
-    setReceiverId(null);
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+    socket?.emit("find_match", { receiverId: receiverId.current });
+    receiverId.current = null;
   };
 
   const sendMessage = () => {
+    if (!newMessage) return toast.error("Enter a Message");
     if (socket && newMessage) {
-      socket.emit("message", {message:newMessage,to:receiverId});
+      socket.emit("message", { message: newMessage, to: receiverId });
       setMessages((prev) => [...prev, { role: "me", message: newMessage }]);
       setNewMessage("");
     }
@@ -198,15 +253,15 @@ const VideoChat = ({ socket }: Props) => {
           });
         }
       };
-      peerConnection.current.oniceconnectionstatechange = () => {
-        console.log("ice state", peerConnection.current?.iceConnectionState);
-        if (peerConnection.current?.iceConnectionState === "disconnected") {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = null;
-          }
-          handleNext();
-        }
-      };
+      // peerConnection.current.oniceconnectionstatechange = () => {
+      //   console.log("ice state", peerConnection.current?.iceConnectionState);
+      //   if (peerConnection.current?.iceConnectionState === "disconnected") {
+      //     if (remoteVideoRef.current) {
+      //       remoteVideoRef.current.srcObject = null;
+      //     }
+      //     handleNext();
+      //   }
+      // };
       if (isMaster) {
         const offer = await peerConnection.current.createOffer();
         await peerConnection.current.setLocalDescription(offer);
@@ -217,13 +272,14 @@ const VideoChat = ({ socket }: Props) => {
       console.log(error);
     }
   };
-const handleTyping = (e:React.ChangeEvent<HTMLInputElement>) => {
-  setNewMessage(e.target.value);
-  socket?.emit("typing",receiverId);
-};
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    socket?.emit("typing", receiverId);
+  };
 
   return (
     <div className="flex flex-col md:flex-row pt-28 min-h-screen p-2 bg-gradient-to-b from-gray-900 to-black">
+      <Toaster duration={1500} position="top-right" />
       <div className="relative flex flex-col gap-4 w-full md:w-2/3 p-4">
         {/* First Video Container */}
         <div className="relative bg-gray-600 h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[80vh] rounded-lg shadow-lg overflow-hidden">
@@ -296,6 +352,7 @@ const handleTyping = (e:React.ChangeEvent<HTMLInputElement>) => {
         {/* Message Input */}
         <div className="flex mt-2 space-x-2">
           <input
+            disabled={loading}
             type="text"
             value={newMessage}
             onChange={handleTyping}
@@ -304,6 +361,7 @@ const handleTyping = (e:React.ChangeEvent<HTMLInputElement>) => {
           />
           <button
             onClick={sendMessage}
+            disabled={loading}
             className="bg-black text-white rounded-lg px-4 py-1 hover:bg-gray-800 transition duration-200"
           >
             <FaPaperPlane />

@@ -20,7 +20,7 @@ export default function Header() {
             <Link
               aria-current="page"
               className="inline-block rounded-lg px-2 py-1 text-base font-bold text-gray-200 transition-all duration-200 hover:bg-gray-700 hover:text-white"
-              href="#"
+              href="/info"
             >
               How it works ?
             </Link>

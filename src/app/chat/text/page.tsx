@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { Socket } from "socket.io-client";
 import Spinner from "@/components/spinner";
+import  {Toaster ,toast} from "sonner"
 
 interface Props {
   socket: Socket | null;
@@ -13,84 +14,84 @@ const TextChat = ({ socket }: Props) => {
   const receiverId = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
-  const [isTyping,setIsTyping]=useState(false)
   const [messages, setMessages] = useState<
     { role: "me" | "received"; message: string }[]
   >([]);
+  const [isTyping, setIsTyping] = useState(false);
+  let timeout: NodeJS.Timeout;
 
   useEffect(() => {
-    socket?.emit("user_joined");
+
 
     socket?.on("user_id", (myId) => {
       userId.current = myId;
+        startSearch();
     });
-    startSearch()
+  
 
     socket?.on("match_found", ({ userId }) => {
       setIsLoading(false);
       receiverId.current = userId;
     });
 
-    socket?.on("message", ( message ) => {
-      console.log("message",message)
+    socket?.on("message", (message) => {
+      console.log("message", message);
       setMessages((prevState) => [
         ...prevState,
         { role: "received", message: message },
       ]);
     });
-  let timeout: NodeJS.Timeout;
-  socket?.on("typing", () => {
-    console.log("typing is happening")
-    setIsTyping(true);
-    if (timeout) clearTimeout(timeout);
 
-    timeout = setTimeout(() => setIsTyping(false), 2000);
-  });
+    socket?.on("typing", () => {
+      console.log("typing is happening");
+      setIsTyping(true);
+      if (timeout) clearTimeout(timeout);
 
-     socket?.on("handle-next", () => {
-      receiverId.current=null
-       handleNext();
-     });
+      timeout = setTimeout(() => setIsTyping(false), 1000);
+    });
+
+    socket?.on("handle-next", () => {
+      receiverId.current = null;
+      handleNext();
+    });
     return () => {
       socket?.off("user_id");
       socket?.off("match_found");
       socket?.off("message");
-      socket?.off("handle-next")
+      socket?.off("handle-next");
       socket?.emit("assist-partner", receiverId.current);
-      socket?.disconnect()
-    
+      if (timeout) clearTimeout(timeout);
     };
   }, [socket]);
 
-
-
   const sendMessage = () => {
-    socket?.emit("message", { message:newMessage, to: receiverId.current });
+    if(!newMessage) return toast.error("Enter a Message")
+    socket?.emit("message", { message: newMessage, to: receiverId.current });
     setMessages((prevState) => [
       ...prevState,
       { role: "me", message: newMessage },
     ]);
     setNewMessage("");
   };
-   const startSearch = () => {
-     if(receiverId.current)receiverId.current=null;
-     socket?.emit("find_match");
-   };
+  const startSearch = () => {
+    if (receiverId.current) receiverId.current = null;
+    socket?.emit("find_match");
+  };
   const handleNext = () => {
     setMessages([]);
     setNewMessage("");
-    socket?.emit("find_match", { receiverId:receiverId.current });
+    socket?.emit("find_match", { receiverId: receiverId.current });
     setIsLoading(true);
     if (receiverId.current) receiverId.current = null;
   };
-  const handleTyping=(e:React.ChangeEvent<HTMLInputElement>)=>{
-    console.log("typing in func")
-    setNewMessage(e.target.value)
-    socket?.emit("typing",receiverId.current)
-  }
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    socket?.emit("typing", receiverId.current);
+  };
 
   return (
-<div className="flex flex-col pt-36 min-h-screen p-4 bg-gradient-to-b from-gray-900 to-black">
+    <div className="flex flex-col pt-36 min-h-screen p-4 bg-gradient-to-b from-gray-900 to-black">
+      <Toaster duration={1500} position="top-right"/>
       <div className="w-full max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col h-[70vh] md:h-[80vh]">
         <div className="flex-1 overflow-y-auto p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-3 relative">
           {isLoading ? (
@@ -121,7 +122,9 @@ const TextChat = ({ socket }: Props) => {
                 }
               })}
               {isTyping && (
-                <div className="text-gray-400 text-sm italic">User is typing...</div>
+                <div className="text-gray-400 text-sm italic">
+                  User is typing...
+                </div>
               )}
             </div>
           )}
@@ -129,6 +132,7 @@ const TextChat = ({ socket }: Props) => {
 
         <div className="flex p-3 border-t border-gray-600 space-x-3 bg-gray-800">
           <input
+          disabled={isLoading}
             type="text"
             value={newMessage}
             onChange={handleTyping}
@@ -143,6 +147,7 @@ const TextChat = ({ socket }: Props) => {
           </button>
           {!isLoading && (
             <button
+            disabled={isLoading}
               className=" bg-black hover:bg-gray-800 font-bold text-white rounded-lg px-6 py-3 shadow-md  hover:shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center"
               onClick={handleNext}
             >
@@ -152,8 +157,6 @@ const TextChat = ({ socket }: Props) => {
         </div>
       </div>
     </div>
-  
-
   );
 };
 export default WithSocket(TextChat);
