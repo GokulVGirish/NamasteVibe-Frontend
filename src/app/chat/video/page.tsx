@@ -27,7 +27,7 @@ interface Props {
 const servers: RTCConfiguration = {
   iceServers: [
   {
-    urls: "stun:stun.l.google.com:19302" // Optional STUN server for gathering public IP
+    urls: "stun:stun.l.google.com:19302" 
   },
   {
     urls: [
@@ -183,9 +183,7 @@ const VideoChat = ({ socket }: Props) => {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
     }
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
+  
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
