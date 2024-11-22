@@ -31,9 +31,6 @@ const servers: RTCConfiguration = {
       username: "guest", // TURN server username
       credential: "password", // TURN server password
     },
-    {
-      urls: ["stun:13.200.127.26:3478"], // STUN server URL
-    },
   ],
 };
 
