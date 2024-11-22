@@ -183,7 +183,9 @@ const VideoChat = ({ socket }: Props) => {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
     }
-  
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
