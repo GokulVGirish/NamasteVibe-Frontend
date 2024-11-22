@@ -26,12 +26,18 @@ interface Props {
 // };
 const servers: RTCConfiguration = {
   iceServers: [
-    {
-      urls: ["turn:turn.ix.tc:3478"], // TURN server URL
-      username: "guest", // TURN server username
-      credential: "password", // TURN server password
-    },
-  ],
+  {
+    urls: "stun:stun.l.google.com:19302" // Optional STUN server for gathering public IP
+  },
+  {
+    urls: [
+      "turn:turn.ix.tc:3478?transport=udp",
+      "turn:turn.ix.tc:3478?transport=tcp"
+    ],
+    username: "guest",
+    credential: "password"
+  }
+]
 };
 
 const VideoChat = ({ socket }: Props) => {
