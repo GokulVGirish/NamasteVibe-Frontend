@@ -28,8 +28,8 @@ const servers: RTCConfiguration = {
   iceServers: [
     {
       urls: ["turn:turn.ix.tc:3478"], // TURN server URL
-      username: "gokul", // TURN server username
-      credential: "gokul365$", // TURN server password
+      username: "guest", // TURN server username
+      credential: "password", // TURN server password
     },
     {
       urls: ["stun:13.200.127.26:3478"], // STUN server URL
