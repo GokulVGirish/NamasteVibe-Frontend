@@ -18,18 +18,18 @@ interface Props {
 
 const servers: RTCConfiguration = {
   iceServers: [
-  {
-    urls: "stun:stun.l.google.com:19302" 
-  },
-  {
-    urls: [
-      process.env.NEXT_PUBLIC_TURN_URL+"?transport=udp",
-      process.env.NEXT_PUBLIC_TURN_URL+"?transport=tcp"
-    ],
-    username: "guest",
-    credential: "password"
-  }
-]
+    {
+      urls: "stun:stun.l.google.com:19302",
+    },
+    {
+      urls: [
+        process.env.NEXT_PUBLIC_TURN_URL + "?transport=udp",
+        process.env.NEXT_PUBLIC_TURN_URL + "?transport=tcp",
+      ],
+      username: process.env.NEXT_PUBLIC_TURN_USERNAME,
+      credential: process.env.NEXT_PUBLIC_TURN_PASSWORD,
+    },
+  ],
 };
 
 const VideoChat = ({ socket }: Props) => {
