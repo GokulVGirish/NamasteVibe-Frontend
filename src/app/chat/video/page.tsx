@@ -15,15 +15,7 @@ interface Props {
 //     },
 //   ],
 // };
-// const servers: RTCConfiguration = {
-//   iceServers: [
-//     {
-//       urls: "turn:13.200.127.26:3478",
-//       username: "gokul",
-//       credential: "gokul365$",
-//     },
-//   ],
-// };
+
 const servers: RTCConfiguration = {
   iceServers: [
   {
@@ -31,8 +23,8 @@ const servers: RTCConfiguration = {
   },
   {
     urls: [
-      "turn:turn.ix.tc:3478?transport=udp",
-      "turn:turn.ix.tc:3478?transport=tcp"
+      process.env.NEXT_PUBLIC_TURN_URL+"?transport=udp",
+      process.env.NEXT_PUBLIC_TURN_URL+"?transport=tcp"
     ],
     username: "guest",
     credential: "password"
@@ -152,6 +144,7 @@ const VideoChat = ({ socket }: Props) => {
     // Clean up socket events on component unmount
     return () => {
       peerConnection.current?.close();
+      socket?.emit("assist-partner",receiverId.current)
       socket?.off("user_id", setUserId);
       socket?.off("match_found", handleMatchFound);
       socket?.off("handle-next", handleNextUser);
@@ -160,6 +153,7 @@ const VideoChat = ({ socket }: Props) => {
       socket?.off("candidate", handleCandidate);
       socket?.off("message", handleMessages);
       socket?.off("typing", handleTypingEvent);
+      notifyPartnerExit()
       peerConnection.current?.close();
       peerConnection.current = null;
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -171,6 +165,21 @@ const VideoChat = ({ socket }: Props) => {
       }
     };
   }, [socket]);
+
+  const notifyPartnerExit = async () => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/assist-partner`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: receiverId.current }),
+      });
+      console.log("Partner notified successfully");
+    } catch (error) {
+      console.error("Failed to notify partner:", error);
+    }
+  };
   
 
   const handleNext = () => {
